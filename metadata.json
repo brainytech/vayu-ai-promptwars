@@ -1,0 +1,6 @@
+{
+  "name": "VayuShield AI",
+  "description": "GenAI-powered Urban Air Quality Assistant helping families and communities navigate winter smog and urban air pollution with live hyperlocal telemetry and Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
