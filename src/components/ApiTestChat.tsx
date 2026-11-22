@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { FormattedMessage } from './FormattedMessage';
+import { API_BASE } from '../services/api';
 
 interface TestMessage {
   id: string;
@@ -65,7 +66,7 @@ export function ApiTestChat() {
       let usedModel = selectedModel;
       let latency = 0;
 
-      const res = await fetch('/api/test-chat', {
+      const res = await fetch(`${API_BASE}/api/test-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, model: selectedModel }),
@@ -73,7 +74,7 @@ export function ApiTestChat() {
 
       if (res.status === 404) {
         // Fallback: If dev server wasn't restarted yet, call /api/ai/chat directly
-        const streamRes = await fetch('/api/ai/chat', {
+        const streamRes = await fetch(`${API_BASE}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text }),

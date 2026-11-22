@@ -17,6 +17,9 @@ import {
   determineDominantPollutant,
 } from '../utils/airQuality';
 
+export const API_BASE =
+  (import.meta.env?.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '';
+
 function formatHourLabel(isoTime: string): string {
   const parts = isoTime.split('T');
   if (parts.length === 2) {
@@ -89,7 +92,7 @@ export async function searchCities(query: string): Promise<CityLocation[]> {
   if (trimmed.length < 2) return [];
 
   try {
-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`);
+    const res = await fetch(`${API_BASE}/api/geocode?q=${encodeURIComponent(trimmed)}`);
     if (!res.ok) {
       throw new Error(`Geocode status ${res.status}`);
     }
@@ -197,7 +200,7 @@ function parseOpenMeteoAirQuality(city: CityLocation, raw: OpenMeteoAirQualityRe
 export async function fetchAirQuality(city: CityLocation): Promise<AirQualityTelemetry> {
   try {
     const res = await fetch(
-      `/api/air-quality?lat=${encodeURIComponent(city.latitude)}&lon=${encodeURIComponent(
+      `${API_BASE}/api/air-quality?lat=${encodeURIComponent(city.latitude)}&lon=${encodeURIComponent(
         city.longitude
       )}&city=${encodeURIComponent(city.name)}`
     );
@@ -271,7 +274,7 @@ export async function fetchDailyRoutine(params: {
   profile: HouseholdProfile;
   tailorInstruction?: string;
 }): Promise<RoutinePlanResponse> {
-  const res = await fetch('/api/ai/routine', {
+  const res = await fetch(`${API_BASE}/api/ai/routine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -293,7 +296,7 @@ export async function fetchAiIaqHacks(params: {
   roomFilter: RoomCategory | 'All';
   budgetFilter: BudgetTier | 'All';
 }): Promise<IaqHack[]> {
-  const res = await fetch('/api/ai/iaq-hacks', {
+  const res = await fetch(`${API_BASE}/api/ai/iaq-hacks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -395,7 +398,7 @@ export async function streamImpactSummary(
   },
   onChunk: (delta: string) => void
 ): Promise<void> {
-  const res = await fetch('/api/ai/impact-summary', {
+  const res = await fetch(`${API_BASE}/api/ai/impact-summary`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -419,7 +422,7 @@ export async function streamVayuChat(
   },
   onChunk: (delta: string) => void
 ): Promise<void> {
-  const res = await fetch('/api/ai/chat', {
+  const res = await fetch(`${API_BASE}/api/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
