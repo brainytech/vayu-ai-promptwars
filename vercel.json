@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/test-chat",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/|test-chat).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

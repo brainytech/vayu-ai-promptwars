@@ -1,7 +1,7 @@
 import type { IaqHack } from '../types';
 
 export const STATIC_IAQ_HACKS: IaqHack[] = [
-  { 
+  {
     id: 'kitchen-lid-exhaust',
     title: 'Cross-Draft + Lid-First Cooking Protocol',
     room: 'Kitchen',

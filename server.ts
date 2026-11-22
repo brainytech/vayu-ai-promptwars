@@ -237,13 +237,27 @@ async function fetchWithTimeout(url: string, timeoutMs = 15000): Promise<Respons
   }
 }
 
-async function startServer() {
-  const app = express();
-  app.use(express.json({ limit: '1mb' }));
+export const app = express();
+app.use(express.json({ limit: '1mb' }));
 
-  app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, provider: 'groq', model: GROQ_MODEL });
-  });
+// Normalize URL in case a proxy or Vercel rewrite stripped the /api prefix
+app.use((req, _res, next) => {
+  if (
+    !req.url.startsWith('/api/') &&
+    !req.url.startsWith('/test-chat') &&
+    (req.url.startsWith('/health') ||
+      req.url.startsWith('/geocode') ||
+      req.url.startsWith('/air-quality') ||
+      req.url.startsWith('/ai/'))
+  ) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
+
+app.get(['/api/health', '/health'], (_req, res) => {
+  res.json({ ok: true, provider: 'groq', model: GROQ_MODEL });
+});
 
   // Standalone Groq API Test Route (Interactive HTML UI)
   app.get('/test-chat', (_req, res) => {
@@ -363,7 +377,7 @@ async function startServer() {
   });
 
   // Standalone API Test Endpoints (JSON)
-  app.post('/api/test-chat', async (req, res) => {
+  app.post(['/api/test-chat', '/test-chat'], async (req, res) => {
     const apiKey = getGroqApiKey();
     if (!apiKey) {
       return res.status(503).json({
@@ -859,6 +873,12 @@ STYLE GUIDELINES:
     }
   });
 
+  // API 404 handler - ensures API calls never return an HTML error page
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'API endpoint not found' });
+  });
+
+async function startLocalServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -879,4 +899,11 @@ STYLE GUIDELINES:
   });
 }
 
-startServer();
+// Only start the HTTP listener if NOT running in Vercel serverless environment
+if (!process.env.VERCEL) {
+  startLocalServer().catch((err) => {
+    console.error('Failed to start local server:', err);
+  });
+}
+
+export default app;

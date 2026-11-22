@@ -234,6 +234,38 @@ export async function fetchAirQuality(city: CityLocation): Promise<AirQualityTel
   }
 }
 
+async function parseJsonResponse<T>(res: Response, defaultError: string): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const rawText = await res.text();
+    const cleanSnippet = rawText.slice(0, 150).replace(/<[^>]*>/g, '').trim();
+    if (!res.ok) {
+      throw new Error(
+        `Server error (${res.status}): ${cleanSnippet || defaultError}. ` +
+          (res.status === 404
+            ? 'Please ensure Vercel API functions and GROQ_API_KEY are configured.'
+            : '')
+      );
+    }
+    throw new Error(
+      `Expected JSON but received non-JSON (${res.status}): "${cleanSnippet.slice(0, 80)}"`
+    );
+  }
+
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Failed to parse JSON response (${res.status}).`);
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `${defaultError} (${res.status})`);
+  }
+
+  return data as T;
+}
+
 export async function fetchDailyRoutine(params: {
   telemetry: AirQualityTelemetry;
   profile: HouseholdProfile;
@@ -252,11 +284,7 @@ export async function fetchDailyRoutine(params: {
     }),
   });
 
-  const data = (await res.json()) as RoutinePlanResponse & { error?: string };
-  if (!res.ok) {
-    throw new Error(data.error || `Failed to generate daily routine (${res.status})`);
-  }
-  return data;
+  return parseJsonResponse<RoutinePlanResponse>(res, 'Failed to generate daily routine');
 }
 
 export async function fetchAiIaqHacks(params: {
@@ -277,10 +305,10 @@ export async function fetchAiIaqHacks(params: {
     }),
   });
 
-  const data = (await res.json()) as { hacks?: IaqHack[]; error?: string };
-  if (!res.ok) {
-    throw new Error(data.error || `Failed to generate AI room hacks (${res.status})`);
-  }
+  const data = await parseJsonResponse<{ hacks?: IaqHack[]; error?: string }>(
+    res,
+    'Failed to generate AI room hacks'
+  );
   return (data.hacks ?? []).map((h) => ({ ...h, isAiGenerated: true }));
 }
 
@@ -290,13 +318,29 @@ async function consumeSseStream(
 ): Promise<void> {
   if (!response.ok) {
     let msg = `Request failed (${response.status})`;
-    try {
-      const errJson = (await response.json()) as { error?: string };
-      if (errJson.error) msg = errJson.error;
-    } catch {
-      // ignore
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const errJson = (await response.json()) as { error?: string };
+        if (errJson.error) msg = errJson.error;
+      } catch {
+        // ignore
+      }
+    } else {
+      const text = await response.text();
+      const snippet = text.slice(0, 150).replace(/<[^>]*>/g, '').trim();
+      if (snippet) msg = `${msg}: ${snippet}`;
     }
     throw new Error(msg);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/event-stream')) {
+    const text = await response.text();
+    const snippet = text.slice(0, 150).replace(/<[^>]*>/g, '').trim();
+    throw new Error(
+      `Expected event-stream but received ${contentType || 'unknown'}: ${snippet.slice(0, 80)}`
+    );
   }
 
   const reader = response.body?.getReader();

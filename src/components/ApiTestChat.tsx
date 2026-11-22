@@ -80,7 +80,14 @@ export function ApiTestChat() {
         });
 
         if (!streamRes.ok) {
-          throw new Error(`Server returned status ${streamRes.status}`);
+          const contentType = streamRes.headers.get('content-type') || '';
+          let errText = `Server returned status ${streamRes.status}`;
+          if (!contentType.includes('text/event-stream')) {
+            const raw = await streamRes.text();
+            const snippet = raw.slice(0, 150).replace(/<[^>]*>/g, '').trim();
+            if (snippet) errText += `: ${snippet}`;
+          }
+          throw new Error(errText);
         }
 
         const reader = streamRes.body?.getReader();
@@ -112,10 +119,21 @@ export function ApiTestChat() {
         }
         latency = Date.now() - start;
       } else {
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const rawText = await res.text();
+          const cleanSnippet = rawText.slice(0, 150).replace(/<[^>]*>/g, '').trim();
+          throw new Error(
+            `API returned status ${res.status} (${cleanSnippet || 'HTML response'}). ` +
+              (res.status === 404
+                ? 'Please ensure Vercel serverless functions and GROQ_API_KEY are configured.'
+                : '')
+          );
+        }
         const data = await res.json();
         latency = data.latencyMs ?? Date.now() - start;
         if (!res.ok || !data.ok) {
-          throw new Error(data.error || data.rawError || 'Gemini API call failed');
+          throw new Error(data.error || data.rawError || 'Groq API call failed');
         }
         replyText = data.reply || '(Empty response)';
         usedModel = data.model || selectedModel;
